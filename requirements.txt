@@ -1,1 +1,2 @@
-streamlit
+streamlit>=1.51
+streamlit-mic-recorder==0.0.8
