@@ -1006,7 +1006,7 @@ if page == 0:
             </div>
             <div class="journey-stop">
                 <div class="num">3</div>
-                <b>Choose the right trail</b>
+                <b>Choose the best path</b>
                 <span>Match the problem to a practical document, workbook, process, code, or app solution.</span>
             </div>
         </div>
