@@ -1,10 +1,7 @@
 
+import re
 import streamlit as st
-
-# ============================================================
-# Standardization Pathfinder
-# Single-file Streamlit application
-# ============================================================
+from streamlit_mic_recorder import speech_to_text
 
 st.set_page_config(
     page_title="Standardization Pathfinder",
@@ -13,97 +10,492 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# -----------------------------
-# Styling
-# -----------------------------
+# ============================================================
+# Visual design
+# ============================================================
+
 st.markdown(
     """
     <style>
+        :root {
+            --ink: #18241f;
+            --muted: #69766f;
+            --line: #e1e7e2;
+            --panel: #ffffff;
+            --cream: #f7f6f0;
+            --forest: #315843;
+            --forest-dark: #173a2b;
+            --sage: #7c9b83;
+            --blue: #4d7781;
+        }
+
         .stApp {
-            background-color: #f7f9fb;
+            background:
+                radial-gradient(circle at 88% 8%, rgba(105,145,120,.09), transparent 25rem),
+                linear-gradient(180deg, #fafbf8 0%, #f3f5f1 100%);
+            color: var(--ink);
         }
 
         .block-container {
-            max-width: 1100px;
-            padding-top: 2rem;
-            padding-bottom: 3rem;
+            max-width: 1120px;
+            padding-top: 1.35rem;
+            padding-bottom: 4rem;
         }
 
-        .pathfinder-header {
-            background: white;
-            border: 1px solid #e5e9ef;
-            border-radius: 14px;
-            padding: 1.4rem 1.6rem;
-            margin-bottom: 1.2rem;
+        #MainMenu, footer {visibility: hidden;}
+
+        .topbar {
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            margin-bottom:.9rem;
+            gap:1rem;
         }
 
-        .pathfinder-header h1 {
-            margin: 0;
-            font-size: 2rem;
-            color: #1f2937;
+        .brand {
+            font-weight:800;
+            letter-spacing:-.025em;
+            color:#173a2b;
+            font-size:1.08rem;
         }
 
-        .pathfinder-header p {
-            margin: 0.4rem 0 0 0;
-            color: #5f6b7a;
+        .session-note {
+            color:var(--muted);
+            font-size:.83rem;
         }
 
-        .section-card {
-            background: white;
-            border: 1px solid #e5e9ef;
-            border-radius: 14px;
-            padding: 1.35rem 1.5rem;
-            margin-bottom: 1rem;
+        /* ---------- LANDING ILLUSTRATION ---------- */
+
+        .landing-shell {
+            position:relative;
+            min-height:640px;
+            overflow:hidden;
+            border-radius:32px;
+            margin-top:.65rem;
+            box-shadow:0 28px 80px rgba(31,60,45,.20);
+            background:#adc9c1;
+            isolation:isolate;
         }
 
-        .recommendation-card {
-            background: white;
-            border: 1px solid #dfe5ec;
-            border-left: 5px solid #526d82;
-            border-radius: 12px;
-            padding: 1.1rem 1.25rem;
-            margin-bottom: 0.9rem;
+        .landing-sky {
+            position:absolute;
+            inset:0;
+            background:
+                radial-gradient(circle at 76% 15%, rgba(255,246,199,.95) 0 4%, rgba(255,246,199,.33) 10%, transparent 23%),
+                linear-gradient(180deg,#a9cac8 0%,#dfe4d5 55%,#bbcbb8 100%);
+            z-index:0;
         }
 
-        .recommendation-card h3 {
-            margin-top: 0;
+        .mist {
+            position:absolute;
+            left:-8%;
+            right:-8%;
+            top:37%;
+            height:18%;
+            background:rgba(244,247,239,.32);
+            filter:blur(18px);
+            z-index:1;
         }
 
-        .review-label {
-            font-weight: 600;
-            color: #334155;
+        .mountains-back {
+            position:absolute;
+            inset:auto -5% 30% -5%;
+            height:43%;
+            background:#78988a;
+            clip-path:polygon(
+                0 66%, 7% 54%, 14% 60%, 23% 30%, 31% 55%,
+                39% 39%, 46% 57%, 55% 20%, 64% 53%, 72% 35%,
+                80% 56%, 89% 28%, 100% 50%, 100% 100%, 0 100%
+            );
+            z-index:1;
         }
 
-        .review-value {
-            margin-bottom: 0.8rem;
-            color: #111827;
-            white-space: pre-wrap;
+        .mountains-front {
+            position:absolute;
+            inset:auto -5% 12% -5%;
+            height:48%;
+            background:#4d745d;
+            clip-path:polygon(
+                0 57%, 8% 35%, 17% 58%, 26% 27%, 36% 55%,
+                46% 31%, 57% 60%, 67% 23%, 78% 54%, 87% 32%,
+                95% 49%, 100% 38%, 100% 100%, 0 100%
+            );
+            z-index:2;
+        }
+
+        .forest-floor {
+            position:absolute;
+            left:0;
+            right:0;
+            bottom:0;
+            height:33%;
+            background:linear-gradient(180deg,#496d52 0%,#274835 100%);
+            z-index:2;
+        }
+
+        .path {
+            position:absolute;
+            z-index:3;
+            left:50%;
+            bottom:-5%;
+            width:57%;
+            height:64%;
+            transform:translateX(-50%);
+            background:
+                linear-gradient(90deg, rgba(126,100,64,.12), transparent 20%, transparent 80%, rgba(126,100,64,.12)),
+                linear-gradient(180deg,#dfcfa9 0%,#c8b17f 100%);
+            clip-path:polygon(
+                48% 0%, 53% 0%,
+                59% 15%, 51% 29%, 62% 43%,
+                55% 56%, 72% 72%, 100% 100%,
+                0 100%, 31% 72%, 45% 57%,
+                38% 43%, 47% 29%, 43% 15%
+            );
+        }
+
+        .tree {
+            position:absolute;
+            z-index:4;
+            width:0;
+            height:0;
+            border-left:44px solid transparent;
+            border-right:44px solid transparent;
+            border-bottom:120px solid #1f4633;
+            filter:drop-shadow(0 10px 8px rgba(21,45,33,.15));
+        }
+
+        .tree:before {
+            content:"";
+            position:absolute;
+            left:-37px;
+            top:34px;
+            width:0;
+            height:0;
+            border-left:37px solid transparent;
+            border-right:37px solid transparent;
+            border-bottom:105px solid #2a553d;
+        }
+
+        .tree:after {
+            content:"";
+            position:absolute;
+            left:-29px;
+            top:65px;
+            width:0;
+            height:0;
+            border-left:29px solid transparent;
+            border-right:29px solid transparent;
+            border-bottom:90px solid #37684a;
+        }
+
+        .tree.t1 {left:5%; bottom:7%; transform:scale(1.58);}
+        .tree.t2 {left:17%; bottom:18%; transform:scale(1.02);}
+        .tree.t3 {left:28%; bottom:26%; transform:scale(.62);}
+        .tree.t4 {right:6%; bottom:6%; transform:scale(1.52);}
+        .tree.t5 {right:19%; bottom:17%; transform:scale(1.03);}
+        .tree.t6 {right:30%; bottom:27%; transform:scale(.62);}
+
+        .landing-overlay {
+            position:relative;
+            z-index:10;
+            min-height:640px;
+            display:flex;
+            align-items:center;
+            padding:4rem 4.2rem;
+            background:
+                linear-gradient(90deg,
+                    rgba(16,44,32,.88) 0%,
+                    rgba(16,44,32,.68) 38%,
+                    rgba(16,44,32,.24) 65%,
+                    rgba(16,44,32,.03) 100%);
+        }
+
+        .landing-copy {
+            max-width:610px;
+            color:white;
+        }
+
+        .landing-eyebrow {
+            display:inline-flex;
+            align-items:center;
+            gap:.5rem;
+            padding:.45rem .75rem;
+            border:1px solid rgba(255,255,255,.28);
+            border-radius:999px;
+            background:rgba(255,255,255,.10);
+            backdrop-filter:blur(8px);
+            font-size:.76rem;
+            font-weight:800;
+            letter-spacing:.13em;
+            text-transform:uppercase;
+            margin-bottom:1rem;
+        }
+
+        .landing-copy h1 {
+            color:white;
+            font-size:clamp(3rem,6vw,5.25rem);
+            line-height:.94;
+            letter-spacing:-.06em;
+            max-width:570px;
+            margin:0 0 1.25rem 0;
+        }
+
+        .landing-copy p {
+            color:rgba(255,255,255,.91);
+            font-size:1.15rem;
+            line-height:1.64;
+            max-width:590px;
+            margin:0;
+        }
+
+        .journey-strip {
+            display:grid;
+            grid-template-columns:repeat(3,1fr);
+            gap:.85rem;
+            margin:1rem 0 1.25rem 0;
+        }
+
+        .journey-stop {
+            background:rgba(255,255,255,.96);
+            border:1px solid var(--line);
+            border-radius:17px;
+            padding:1rem 1.1rem;
+            box-shadow:0 8px 25px rgba(20,42,31,.04);
+        }
+
+        .journey-stop .num {
+            width:29px;
+            height:29px;
+            border-radius:50%;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            background:#315843;
+            color:white;
+            font-size:.8rem;
+            font-weight:800;
+            margin-bottom:.62rem;
+        }
+
+        .journey-stop b {
+            display:block;
+            color:#173a2b;
+            margin-bottom:.28rem;
+        }
+
+        .journey-stop span {
+            color:var(--muted);
+            font-size:.9rem;
+            line-height:1.47;
+        }
+
+        /* ---------- INTERNAL PAGES ---------- */
+
+        .step-strip {
+            display:grid;
+            grid-template-columns:repeat(6,1fr);
+            gap:.45rem;
+            margin:1.15rem 0 1.5rem 0;
+        }
+
+        .step {
+            min-height:5px;
+            border-radius:999px;
+            background:#dfe5e0;
+        }
+        .step.done {background:#83a18c;}
+        .step.active {background:#315843;}
+
+        .page-heading {margin:.35rem 0 1.35rem 0;}
+        .page-heading .eyebrow {
+            color:#315843;
+            font-size:.77rem;
+            font-weight:800;
+            letter-spacing:.12em;
+            text-transform:uppercase;
+            margin-bottom:.35rem;
+        }
+        .page-heading h2 {
+            color:var(--ink);
+            font-size:2rem;
+            letter-spacing:-.035em;
+            margin:0 0 .38rem 0;
+        }
+        .page-heading p {
+            color:var(--muted);
+            margin:0;
+            line-height:1.55;
+            max-width:820px;
+        }
+
+        .prompt-card {
+            background:#edf4ef;
+            border:1px solid #d9e7dd;
+            color:#315843;
+            border-radius:16px;
+            padding:1rem 1.1rem;
+            margin:.45rem 0 1rem 0;
+        }
+
+        .microcopy {
+            color:var(--muted);
+            font-size:.88rem;
+            margin-top:-.2rem;
+            margin-bottom:.7rem;
+        }
+
+        .result-hero {
+            background:linear-gradient(135deg,#173a2b 0%,#315843 100%);
+            color:white;
+            border-radius:22px;
+            padding:2rem 2.1rem;
+            box-shadow:0 16px 44px rgba(21,50,36,.14);
+            margin-bottom:1.2rem;
+        }
+
+        .result-hero .label {
+            text-transform:uppercase;
+            font-size:.74rem;
+            letter-spacing:.13em;
+            opacity:.75;
+            font-weight:800;
+        }
+
+        .result-hero h2 {
+            color:white;
+            font-size:2.15rem;
+            margin:.35rem 0 .6rem 0;
+        }
+
+        .result-hero p {
+            color:rgba(255,255,255,.89);
+            max-width:820px;
+            line-height:1.55;
+        }
+
+        .badge-row {
+            display:flex;
+            gap:.45rem;
+            flex-wrap:wrap;
+            margin-top:.8rem;
+        }
+
+        .badge {
+            display:inline-flex;
+            border-radius:999px;
+            padding:.34rem .68rem;
+            background:rgba(255,255,255,.12);
+            border:1px solid rgba(255,255,255,.18);
+            font-size:.82rem;
+            font-weight:650;
+            color:white;
+        }
+
+        .fit-card {
+            background:white;
+            border:1px solid var(--line);
+            border-radius:16px;
+            padding:1.15rem 1.25rem;
+            min-height:210px;
+        }
+
+        .fit-card h4 {margin:0 0 .35rem 0;}
+        .score {
+            font-size:1.7rem;
+            font-weight:800;
+            color:#315843;
+            letter-spacing:-.03em;
+        }
+        .why {
+            color:#55625b;
+            font-size:.92rem;
+            line-height:1.48;
+        }
+
+        .review-k {
+            font-size:.76rem;
+            color:var(--muted);
+            font-weight:800;
+            text-transform:uppercase;
+            letter-spacing:.06em;
+            margin-bottom:.2rem;
+        }
+        .review-v {
+            color:var(--ink);
+            white-space:pre-wrap;
+            margin-bottom:.9rem;
+            line-height:1.5;
+        }
+
+        .framework-step {
+            background:white;
+            border:1px solid var(--line);
+            border-radius:14px;
+            padding:1rem 1.1rem;
+            margin-bottom:.65rem;
+        }
+
+        .framework-step .n {
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            width:27px;
+            height:27px;
+            border-radius:50%;
+            background:#315843;
+            color:white;
+            font-size:.78rem;
+            font-weight:800;
+            margin-right:.55rem;
         }
 
         div[data-testid="stProgress"] > div > div > div > div {
-            background-color: #526d82;
+            background-color:#315843;
         }
 
-        .small-note {
-            color: #667085;
-            font-size: 0.92rem;
+        div.stButton > button {
+            border-radius:12px;
+            min-height:2.8rem;
+            font-weight:700;
+        }
+
+        div[data-baseweb="textarea"] textarea,
+        div[data-baseweb="input"] input {
+            border-radius:12px !important;
+        }
+
+        @media (max-width:800px) {
+            .landing-shell,
+            .landing-overlay {min-height:570px;}
+            .landing-overlay {
+                align-items:flex-end;
+                padding:2.3rem 1.6rem;
+                background:linear-gradient(0deg,
+                    rgba(16,44,32,.91) 0%,
+                    rgba(16,44,32,.63) 52%,
+                    rgba(16,44,32,.08) 100%);
+            }
+            .landing-copy h1 {font-size:3.1rem;}
+            .journey-strip {grid-template-columns:1fr;}
         }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-# -----------------------------
-# Constants
-# -----------------------------
+# ============================================================
+# Content
+# ============================================================
+
 PAGES = [
     "Welcome",
-    "Problem Definition",
-    "Current State Assessment",
-    "Standardization Needs",
-    "Implementation Context",
+    "Define the problem",
+    "Understand the current state",
+    "Size the issue",
+    "Imagine the better way",
+    "Solution fit",
     "Review",
-    "Recommendations",
+    "Recommendation",
 ]
 
 ROOT_CAUSE_CATEGORIES = [
@@ -136,34 +528,22 @@ ROOT_CAUSE_CATEGORIES = [
     "Systems do not integrate",
 ]
 
-STANDARDIZATION_OBJECTIVES = [
-    "Create a consistent process",
-    "Reduce manual effort",
-    "Improve data quality",
-    "Improve QA/QC",
-    "Make information easier to find",
-    "Improve role clarity",
-    "Improve decision consistency",
-    "Reduce training burden",
-    "Reduce duplicate work",
-    "Standardize inputs",
-    "Standardize outputs",
-    "Improve handoffs",
-    "Automate calculations",
-    "Automate repetitive administrative work",
-    "Improve traceability",
+SCOPE_OPTIONS = [
+    "One specific project or task type",
+    "Several related project or task types",
+    "Most projects or tasks in a team",
+    "Organization-wide or cross-team",
 ]
 
 FREQUENCY_OPTIONS = [
-    "Daily",
-    "Weekly",
-    "Monthly",
-    "Quarterly",
-    "A few times per year",
-    "Ad hoc but recurring",
+    "Less than once per project / occurrence",
+    "About once per project / occurrence",
+    "2–3 times per project / occurrence",
+    "4+ times per project / occurrence",
+    "Daily or near-daily operational work",
 ]
 
-USER_COUNT_OPTIONS = [
+USER_OPTIONS = [
     "1 person",
     "2–5 people",
     "6–20 people",
@@ -172,647 +552,790 @@ USER_COUNT_OPTIONS = [
 ]
 
 VARIABILITY_OPTIONS = [
-    "Low — the same process is followed almost every time",
-    "Moderate — there are a few common variations",
-    "High — the process varies substantially by project or situation",
+    "Low — the same logic and steps apply most of the time",
+    "Moderate — there are a few recurring pathways or scenarios",
+    "High — the work changes substantially case by case",
 ]
 
-DATA_VOLUME_OPTIONS = [
-    "Low — small amounts of information",
-    "Moderate — multiple files, records, or calculations",
-    "High — large datasets or frequent repeated processing",
+DATA_SHAPE_OPTIONS = [
+    "Mostly narrative / documents",
+    "Mostly structured rows, columns, tables, or parameters",
+    "A mix of structured data and narrative information",
+    "Mostly files moving between systems",
 ]
 
-CHANGE_OPTIONS = [
-    "Rarely",
-    "Occasionally",
-    "Frequently",
+SOLUTION_CATEGORIES = {
+    "Document based": [
+        "SOP / procedure document",
+        "Technical guidance document",
+        "Reference guide",
+        "Checklist",
+        "Requirements matrix",
+        "Report template",
+        "Training material",
+        "Example deliverable",
+    ],
+    "Spreadsheet based": [
+        "Excel calculation workbook",
+        "Macro-enabled workbook",
+        "Standard input / parameter lookup table",
+    ],
+    "Process based": [
+        "Process adjustment",
+        "Clear roles / responsibilities / expectations",
+        "Standardized workflow",
+        "Decision tree",
+        "Standard folder structure",
+        "Standard naming conventions",
+    ],
+    "Code based": [
+        "Standalone code or script",
+        "Executable tool",
+    ],
+    "App based": [
+        "Internal app",
+        "Web-based tool",
+        "Mobile or field app",
+        "Guided decision-support tool",
+    ],
+}
+
+EXCEL_BUILD_FRAMEWORK = [
+    ("Define calculation scope", "Start with the final outputs. Identify major calculation components, supported scenarios, and anything intentionally excluded."),
+    ("Identify governing requirements", "Gather the methodology, standard, procedure, equations, tables, and internal requirements that affect the calculation."),
+    ("Map the calculation logic", "Work backward from final results through calculation components, decision points, intermediate results, and aggregation."),
+    ("Define inputs and parameters", "Separate project-specific user inputs from controlled parameters, lookup values, units, sources, and conditions."),
+    ("Define the data structure", "Decide what one row represents and which fields uniquely define a record before building input tables."),
+    ("Design the workbook", "Create only the worksheets needed for instructions, inputs, parameters, calculations, QA/QC, results, and change control."),
+    ("Build inputs and parameters", "Use clear editable cells, units, dropdowns, validation rules, Excel Tables, and centralized controlled parameters."),
+    ("Build and verify calculations", "Build in logical modules, expose useful intermediate results, and check each component independently."),
+    ("Build aggregation and final results", "Define sums, means, weighting, ratios, or other required rollups and reconcile outputs to detailed records."),
+    ("Add QA/QC controls", "Target missing inputs, invalid values, inconsistent dates, duplicates, missing parameters, incompatible selections, and reconciliation failures."),
+    ("Test the complete workbook", "Test known-value examples, realistic data, blanks, zeros, optional pathways, boundary values, copied data, and added rows."),
+    ("Finalize and release", "Add version information, source references, owner, instructions, change log, appropriate protection, and independent user testing."),
 ]
 
-SYSTEM_DEPENDENCY_OPTIONS = [
-    "Low — mostly documents or manual work",
-    "Moderate — relies on common tools such as Excel, SharePoint, Teams, or email",
-    "High — relies on multiple systems, integrations, or specialized software",
-]
-
-# -----------------------------
-# Session state initialization
-# -----------------------------
 DEFAULTS = {
     "page": 0,
-    "started": False,
     "problem_title": "",
     "pain_point": "",
     "why_matter": "",
     "current_workflow": "",
     "existing_tools": "",
-    "root_cause_category": [],
+    "root_causes": [],
     "root_cause_details": "",
-    "objectives": [],
+    "scope": SCOPE_OPTIONS[0],
+    "frequency": FREQUENCY_OPTIONS[1],
+    "user_count": USER_OPTIONS[1],
+    "time_hours": 1.0,
+    "bau_outcome": "",
+    "daydream": "",
     "desired_outcome": "",
-    "standard_inputs_needed": False,
-    "standard_outputs_needed": False,
-    "repeatable_decisions": False,
+    "data_shape": DATA_SHAPE_OPTIONS[1],
+    "variability": VARIABILITY_OPTIONS[1],
     "calculation_heavy": False,
-    "structured_data": False,
-    "document_heavy": False,
-    "frequency": "Monthly",
-    "user_count": "2–5 people",
-    "variability": "Moderate — there are a few common variations",
-    "data_volume": "Moderate — multiple files, records, or calculations",
-    "change_frequency": "Occasionally",
-    "system_dependency": "Moderate — relies on common tools such as Excel, SharePoint, Teams, or email",
-    "needs_auditability": False,
-    "needs_offline_use": False,
-    "needs_nontechnical_users": True,
-    "recommendations_generated": False,
+    "comparison_needed": False,
+    "standard_inputs": False,
+    "standard_outputs": False,
+    "repeatable_decisions": False,
+    "qa_important": False,
+    "excel_native": False,
+    "file_processing": False,
+    "central_multiuser": False,
+    "real_time": False,
+    "offline": False,
+    "nontechnical": True,
 }
 
-for key, value in DEFAULTS.items():
-    if key not in st.session_state:
-        st.session_state[key] = value
+for k, v in DEFAULTS.items():
+    if k not in st.session_state:
+        st.session_state[k] = v
 
+# ============================================================
+# Helpers
+# ============================================================
 
-# -----------------------------
-# Navigation helpers
-# -----------------------------
-def go_to(page_index: int):
-    st.session_state.page = max(0, min(page_index, len(PAGES) - 1))
+def goto(index):
+    st.session_state.page = max(0, min(index, len(PAGES) - 1))
     st.rerun()
 
+def reset_app():
+    for k, v in DEFAULTS.items():
+        st.session_state[k] = v
+    st.rerun()
 
-def next_page():
-    go_to(st.session_state.page + 1)
-
-
-def previous_page():
-    go_to(st.session_state.page - 1)
-
-
-def render_header():
-    current = st.session_state.page
-    completed = max(0, current)
-    denominator = len(PAGES) - 1
-    progress = min(completed / denominator, 1.0)
-
+def topbar():
     st.markdown(
         """
-        <div class="pathfinder-header">
-            <h1>Standardization Pathfinder</h1>
-            <p>Guided decision support for choosing the right standardization approach.</p>
+        <div class="topbar">
+            <div class="brand">Standardization Pathfinder</div>
+            <div class="session-note">Session only · nothing is saved</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    if current > 0:
-        st.progress(progress)
-        st.caption(f"Step {current} of {denominator}: {PAGES[current]}")
+def step_strip():
+    if st.session_state.page == 0:
+        return
 
+    current = st.session_state.page
+    total = 6
+    html = '<div class="step-strip">'
+    for i in range(1, total + 1):
+        cls = "step"
+        if i < current:
+            cls += " done"
+        elif i == current:
+            cls += " active"
+        html += f'<div class="{cls}"></div>'
+    html += "</div>"
+    st.markdown(html, unsafe_allow_html=True)
 
-def navigation_buttons(show_previous=True, next_label="Next", next_disabled=False):
-    left, spacer, right = st.columns([1, 5, 1])
+    if current <= total:
+        st.caption(f"Part {current} of {total} · {PAGES[current]}")
+    else:
+        st.caption("Recommendation")
+
+def heading(kicker, title, text):
+    st.markdown(
+        f"""
+        <div class="page-heading">
+            <div class="eyebrow">{kicker}</div>
+            <h2>{title}</h2>
+            <p>{text}</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+def nav(next_disabled=False, next_label="Continue", back=True):
+    left, middle, right = st.columns([1.1, 5.3, 1.35])
     with left:
-        if show_previous and st.button("Previous", use_container_width=True):
-            previous_page()
+        if back and st.button("Back", use_container_width=True):
+            goto(st.session_state.page - 1)
     with right:
-        if st.button(next_label, use_container_width=True, type="primary", disabled=next_disabled):
-            next_page()
+        if st.button(next_label, type="primary", use_container_width=True, disabled=next_disabled):
+            goto(st.session_state.page + 1)
 
+def voice_textarea(label, key, placeholder="", height=140, help_text=None):
+    st.markdown(f"**{label}**")
+    if help_text:
+        st.markdown(f'<div class="microcopy">{help_text}</div>', unsafe_allow_html=True)
 
-# -----------------------------
-# Recommendation engine
-# -----------------------------
-def score_recommendations():
+    mic, note = st.columns([1.1, 4.9])
+    with mic:
+        transcript = speech_to_text(
+            language="en",
+            start_prompt="🎙 Speak",
+            stop_prompt="Stop",
+            just_once=True,
+            use_container_width=True,
+            key=f"{key}_speech",
+        )
+
+    if transcript:
+        existing = st.session_state.get(key, "").strip()
+        addition = transcript.strip()
+        st.session_state[key] = f"{existing} {addition}".strip() if existing else addition
+
+    with note:
+        st.caption("Type normally, or use the microphone and your words will be added below.")
+
+    return st.text_area(
+        label,
+        key=key,
+        placeholder=placeholder,
+        height=height,
+        label_visibility="collapsed",
+    )
+
+def normalized_text(text):
+    return re.sub(r"\s+", " ", (text or "").lower()).strip()
+
+def recommendation_engine():
+    roots = set(st.session_state.root_causes)
+    daydream = normalized_text(st.session_state.daydream)
+    workflow = normalized_text(st.session_state.current_workflow)
+    tools = normalized_text(st.session_state.existing_tools)
+    desired = normalized_text(st.session_state.desired_outcome)
+    combined = " ".join([daydream, workflow, tools, desired])
+
     scores = {
-        "Standard Operating Procedure (SOP)": 0,
-        "Checklist or Job Aid": 0,
-        "Standard Template": 0,
-        "Excel Calculation Tool": 0,
-        "Automated Script": 0,
-        "Internal App": 0,
-        "Shared Knowledge Resource": 0,
-        "Process / Role Redesign": 0,
+        "Excel calculation workbook": 0,
+        "Macro-enabled workbook": 0,
+        "Checklist": 0,
+        "SOP / procedure document": 0,
+        "Requirements matrix": 0,
+        "Reference guide": 0,
+        "Process adjustment": 0,
+        "Clear roles / responsibilities / expectations": 0,
+        "Standardized workflow": 0,
+        "Decision tree": 0,
+        "Standalone code or script": 0,
+        "Executable tool": 0,
+        "Internal app": 0,
+        "Guided decision-support tool": 0,
+        "Report template": 0,
+        "Standard input / parameter lookup table": 0,
     }
 
-    reasons = {key: [] for key in scores}
+    why = {k: [] for k in scores}
 
-    roots = set(st.session_state.root_cause_category)
-    objectives = set(st.session_state.objectives)
+    def add(name, points, reason=None):
+        scores[name] += points
+        if reason and reason not in why[name]:
+            why[name].append(reason)
 
-    # SOP
-    if roots & {
-        "Process not defined",
-        "Process not followed",
-        "Lack of clarity",
-        "Too many handoffs",
-        "Inconsistent terminology",
-    }:
-        scores["Standard Operating Procedure (SOP)"] += 4
-        reasons["Standard Operating Procedure (SOP)"].append(
-            "The problem involves process definition, consistency, or clarity."
-        )
-    if "Create a consistent process" in objectives:
-        scores["Standard Operating Procedure (SOP)"] += 3
-    if st.session_state.variability.startswith("Low"):
-        scores["Standard Operating Procedure (SOP)"] += 2
-
-    # Checklist / job aid
-    if roots & {
-        "Process not followed",
-        "Insufficient QA/QC",
-        "Late QA/QC",
-        "Knowledge gap",
-    }:
-        scores["Checklist or Job Aid"] += 4
-        reasons["Checklist or Job Aid"].append(
-            "A lightweight control could improve consistency, QA/QC, or execution."
-        )
-    if st.session_state.variability.startswith("Moderate"):
-        scores["Checklist or Job Aid"] += 1
-
-    # Standard template
-    if roots & {
-        "Lack of standard inputs",
-        "Lack of standard outputs",
-        "Inconsistent file structure or naming",
-        "Information not captured",
-        "Inconsistent terminology",
-    }:
-        scores["Standard Template"] += 5
-        reasons["Standard Template"].append(
-            "The issue involves inconsistent inputs, outputs, structure, or captured information."
-        )
-    if st.session_state.standard_inputs_needed:
-        scores["Standard Template"] += 3
-    if st.session_state.standard_outputs_needed:
-        scores["Standard Template"] += 3
-
-    # Excel tool
-    if roots & {
-        "Repetitive calculations",
-        "Manual data transfer",
-        "Duplicate effort",
-    }:
-        scores["Excel Calculation Tool"] += 4
-        reasons["Excel Calculation Tool"].append(
-            "The work contains repeatable calculations or manual data handling."
-        )
+    # Strong spreadsheet weighting for transparent, structured calculation work
     if st.session_state.calculation_heavy:
-        scores["Excel Calculation Tool"] += 5
-    if st.session_state.structured_data:
-        scores["Excel Calculation Tool"] += 2
-    if st.session_state.user_count in {"1 person", "2–5 people", "6–20 people"}:
-        scores["Excel Calculation Tool"] += 1
-    if st.session_state.system_dependency.startswith("Low") or st.session_state.system_dependency.startswith("Moderate"):
-        scores["Excel Calculation Tool"] += 1
+        add("Excel calculation workbook", 9, "The work contains repeatable calculations.")
+        add("Macro-enabled workbook", 5)
+        add("Standalone code or script", 3)
+        add("Internal app", 2)
 
-    # Script
-    if roots & {
-        "Manual data transfer",
-        "Repetitive calculations",
-        "Repetitive administrative work",
-        "Duplicate effort",
-        "System limitations",
-        "Systems do not integrate",
-    }:
-        scores["Automated Script"] += 4
-        reasons["Automated Script"].append(
-            "Automation may remove repeated processing, transfer, or administrative effort."
-        )
-    if st.session_state.data_volume.startswith("High"):
-        scores["Automated Script"] += 3
-    if st.session_state.frequency in {"Daily", "Weekly"}:
-        scores["Automated Script"] += 2
-    if st.session_state.structured_data:
-        scores["Automated Script"] += 2
-    if st.session_state.needs_nontechnical_users:
-        scores["Automated Script"] -= 1
+    if st.session_state.data_shape.startswith("Mostly structured"):
+        add("Excel calculation workbook", 5, "The information naturally fits rows, columns, tables, and parameters.")
+        add("Standard input / parameter lookup table", 4)
+        add("Standalone code or script", 2)
 
-    # Internal app
-    if roots & {
-        "High complexity",
-        "Information scattered across locations",
-        "Information difficult to find",
-        "Manual data transfer",
-        "Repetitive administrative work",
-        "Unclear decision authority",
-    }:
-        scores["Internal App"] += 4
-        reasons["Internal App"].append(
-            "The problem spans multiple tasks, decisions, or information sources."
-        )
+    if st.session_state.comparison_needed:
+        add("Excel calculation workbook", 5, "The desired output includes a direct comparison of results.")
+        add("Report template", 1)
+
+    if st.session_state.standard_inputs:
+        add("Excel calculation workbook", 3, "Standardized inputs are part of the future state.")
+        add("Standard input / parameter lookup table", 5)
+        add("Internal app", 2)
+
+    if st.session_state.standard_outputs:
+        add("Excel calculation workbook", 3, "Standardized outputs are required.")
+        add("Report template", 3)
+        add("Internal app", 2)
+
+    if st.session_state.qa_important:
+        add("Excel calculation workbook", 3, "Transparent QA/QC and reviewability are important.")
+        add("Checklist", 3)
+        add("Requirements matrix", 2)
+        add("Internal app", 1)
+
+    if st.session_state.excel_native or any(x in combined for x in ["excel", "workbook", "spreadsheet"]):
+        add("Excel calculation workbook", 10, "The existing or ideal workflow is explicitly Excel/workbook-based.")
+        add("Macro-enabled workbook", 4)
+
+    if any(x in daydream for x in ["calculation workbook", "excel workbook", "spreadsheet", "workbook"]):
+        add("Excel calculation workbook", 10, "Your ideal future state explicitly describes a workbook.")
+        add("Internal app", -3)
+
+    # Documents and controls
+    if roots & {"Process not defined", "Lack of clarity", "Process not followed"}:
+        add("SOP / procedure document", 6, "The root cause includes process clarity or definition.")
+        add("Checklist", 3)
+
+    if roots & {"Knowledge gap", "Information difficult to find", "Information scattered across locations", "Information not current"}:
+        add("Reference guide", 6, "The main issue includes finding or understanding information.")
+        add("SOP / procedure document", 2)
+
+    if roots & {"Insufficient QA/QC", "Late QA/QC"}:
+        add("Checklist", 6, "The root cause includes missing or late QA/QC.")
+        add("Requirements matrix", 3)
+        add("Excel calculation workbook", 2)
+
+    if roots & {"Lack of standard inputs", "Information not captured"}:
+        add("Standard input / parameter lookup table", 5)
+        add("Excel calculation workbook", 2)
+
+    if roots & {"Lack of standard outputs"}:
+        add("Report template", 5)
+        add("Excel calculation workbook", 2)
+
+    # Process / ownership
+    if roots & {"Missing ownership", "Unclear roles or responsibilities", "Unclear decision authority"}:
+        add("Clear roles / responsibilities / expectations", 9, "The root cause is primarily ownership or responsibility.")
+        add("Process adjustment", 5)
+        add("Standardized workflow", 4)
+        add("Internal app", -2)
+
+    if roots & {"Too many handoffs", "No feedback loop"}:
+        add("Process adjustment", 7, "The issue is structural in the workflow.")
+        add("Standardized workflow", 6)
+
+    # Code
+    if roots & {"Manual data transfer", "Repetitive administrative work", "Duplicate effort"}:
+        add("Standalone code or script", 5, "Automation could remove repetitive data handling.")
+        add("Executable tool", 4)
+        add("Macro-enabled workbook", 3)
+
+    if st.session_state.file_processing:
+        add("Standalone code or script", 7, "The work involves repeatable file or data processing.")
+        add("Executable tool", 5)
+        add("Internal app", 2)
+
+    # Decision support
     if st.session_state.repeatable_decisions:
-        scores["Internal App"] += 3
-    if st.session_state.needs_nontechnical_users:
-        scores["Internal App"] += 2
+        add("Decision tree", 5, "The work contains repeatable decision logic.")
+        add("Guided decision-support tool", 5)
+        add("Internal app", 2)
+        if st.session_state.variability.startswith("Moderate"):
+            add("Excel calculation workbook", 2)
+
+    # App should require app-specific needs
+    if st.session_state.central_multiuser:
+        add("Internal app", 8, "Multiple users need a shared, centralized interface or source of truth.")
+        add("Guided decision-support tool", 4)
+
+    if st.session_state.real_time:
+        add("Internal app", 7, "The process benefits from real-time shared state or immediate cross-user updates.")
+        add("Standalone code or script", 2)
+
     if st.session_state.user_count in {"21–50 people", "More than 50 people"}:
-        scores["Internal App"] += 2
-    if st.session_state.variability.startswith("Moderate"):
-        scores["Internal App"] += 1
+        add("Internal app", 4, "The solution may need to serve a larger user group.")
+        add("SOP / procedure document", 2)
 
-    # Shared knowledge resource
-    if roots & {
-        "Knowledge gap",
-        "Information difficult to find",
-        "Information scattered across locations",
-        "Information not current",
-        "Lack of clarity",
-    }:
-        scores["Shared Knowledge Resource"] += 5
-        reasons["Shared Knowledge Resource"].append(
-            "The issue is primarily about finding, maintaining, or understanding information."
-        )
-    if st.session_state.document_heavy:
-        scores["Shared Knowledge Resource"] += 2
-    if "Make information easier to find" in objectives:
-        scores["Shared Knowledge Resource"] += 3
+    if st.session_state.user_count in {"1 person", "2–5 people"}:
+        add("Excel calculation workbook", 2)
+        add("Internal app", -2)
 
-    # Process / role redesign
-    if roots & {
-        "Missing ownership",
-        "Unclear roles or responsibilities",
-        "Unclear decision authority",
-        "Too many handoffs",
-        "No feedback loop",
-    }:
-        scores["Process / Role Redesign"] += 6
-        reasons["Process / Role Redesign"].append(
-            "The main issue appears structural rather than purely document- or tool-based."
-        )
-    if "Improve role clarity" in objectives:
-        scores["Process / Role Redesign"] += 3
-    if "Improve handoffs" in objectives:
-        scores["Process / Role Redesign"] += 2
+    if st.session_state.offline:
+        add("Excel calculation workbook", 3)
+        add("Executable tool", 2)
+        add("Internal app", -4, "Offline use makes a hosted app less attractive.")
 
-    # Cross-cutting refinements
-    if st.session_state.change_frequency == "Frequently":
-        scores["Standard Operating Procedure (SOP)"] -= 1
-        scores["Standard Template"] -= 1
-        scores["Internal App"] += 1
-        scores["Shared Knowledge Resource"] += 1
+    if st.session_state.nontechnical:
+        add("Excel calculation workbook", 2, "The primary users are nontechnical and a familiar interface may reduce adoption friction.")
+        add("Checklist", 1)
+        add("Internal app", 1)
 
-    if st.session_state.needs_auditability:
-        scores["Standard Operating Procedure (SOP)"] += 1
-        scores["Checklist or Job Aid"] += 1
-        scores["Standard Template"] += 1
-        scores["Excel Calculation Tool"] += 1
-        scores["Internal App"] += 1
+    if st.session_state.variability.startswith("High"):
+        add("SOP / procedure document", -2)
+        add("Excel calculation workbook", -1)
+        add("Guided decision-support tool", 3)
+
+    if st.session_state.data_shape.startswith("Mostly narrative"):
+        add("Reference guide", 3)
+        add("SOP / procedure document", 2)
+        add("Excel calculation workbook", -3)
+
+    # Avoid "complex = app"
+    if not st.session_state.central_multiuser and not st.session_state.real_time:
+        add("Internal app", -3)
 
     ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
-    return ranked, reasons
+    return ranked, why
 
+def category_for(solution):
+    for category, options in SOLUTION_CATEGORIES.items():
+        if solution in options:
+            return category
+    return "Other"
 
-def recommendation_description(name):
+def solution_description(solution):
     descriptions = {
-        "Standard Operating Procedure (SOP)":
-            "Use when the primary need is a defined, repeatable process with clear instructions, roles, controls, and decision points.",
-        "Checklist or Job Aid":
-            "Use when the process already exists but users need a concise execution aid, quality-control check, or reminder.",
-        "Standard Template":
-            "Use when consistency is needed in the information collected, file structure, terminology, inputs, or outputs.",
-        "Excel Calculation Tool":
-            "Use when the work is structured, calculation-heavy, and benefits from transparent formulas, controlled inputs, and standardized outputs.",
-        "Automated Script":
-            "Use when repeated data processing, file handling, calculations, or transfers can be reliably automated with limited user interaction.",
-        "Internal App":
-            "Use when users need a guided interface that combines inputs, logic, calculations, decision support, and standardized outputs.",
-        "Shared Knowledge Resource":
-            "Use when the main problem is fragmented, hard-to-find, unclear, or outdated guidance and reference information.",
-        "Process / Role Redesign":
-            "Use when the root problem is ownership, decision authority, handoffs, responsibilities, or process structure rather than the absence of a tool.",
+        "Excel calculation workbook": "A transparent, structured workbook with controlled inputs, parameters, calculation modules, QA/QC, and clear results.",
+        "Macro-enabled workbook": "An Excel workbook with controlled VBA automation where ordinary formulas are not enough.",
+        "Checklist": "A lightweight execution or QA/QC aid for a process that largely already exists.",
+        "SOP / procedure document": "A durable written process defining what to do, when, and how.",
+        "Requirements matrix": "A structured mapping between requirements, evidence, calculations, controls, or outputs.",
+        "Reference guide": "A concise source of truth for information users currently have to search for or remember.",
+        "Process adjustment": "A change to the workflow itself rather than creation of a new technical tool.",
+        "Clear roles / responsibilities / expectations": "Explicit ownership and responsibility definitions where ambiguity is the core problem.",
+        "Standardized workflow": "A consistent sequence of tasks, handoffs, and controls.",
+        "Decision tree": "A visual or structured way to guide repeatable choices.",
+        "Standalone code or script": "Code that automates repeated processing, calculations, transformations, or file handling.",
+        "Executable tool": "Packaged code for users who need automation without interacting directly with source code.",
+        "Internal app": "A shared interactive interface suited to centralized multi-user workflows, cross-user state, or app-like interaction.",
+        "Guided decision-support tool": "An interactive tool that walks users through recurring decision logic and produces a standardized result.",
+        "Report template": "A standardized structure for recurring outputs and reporting.",
+        "Standard input / parameter lookup table": "A controlled source for recurring values, factors, units, mappings, and allowed inputs.",
     }
-    return descriptions[name]
+    return descriptions.get(solution, "")
 
+# ============================================================
+# Pages
+# ============================================================
 
-# -----------------------------
-# Page rendering
-# -----------------------------
-render_header()
-
+topbar()
+step_strip()
 page = st.session_state.page
 
-# PAGE 1: Welcome
 if page == 0:
     st.markdown(
         """
-        <div class="section-card">
-            <h2>Welcome</h2>
-            <p>
-                Standardization Pathfinder helps employees determine the most appropriate
-                standardization approach for a recurring operational problem.
-            </p>
-            <p>
-                The assessment guides you through the problem, current state, standardization
-                needs, and implementation context. It then compares several solution types,
-                including procedures, templates, calculation tools, scripts, internal apps,
-                and process changes.
-            </p>
-            <p>
-                The goal is not to force every problem into the same solution. It is to identify
-                the smallest practical standardization approach that addresses the actual root cause.
-            </p>
-            <p class="small-note">
-                Responses are stored only in your current Streamlit session. This application does
-                not use a database, authentication, approvals, workflow management, or draft storage.
-            </p>
+        <div class="landing-shell">
+            <div class="landing-sky"></div>
+            <div class="mist"></div>
+            <div class="mountains-back"></div>
+            <div class="mountains-front"></div>
+            <div class="forest-floor"></div>
+            <div class="path"></div>
+            <div class="tree t1"></div>
+            <div class="tree t2"></div>
+            <div class="tree t3"></div>
+            <div class="tree t4"></div>
+            <div class="tree t5"></div>
+            <div class="tree t6"></div>
+
+            <div class="landing-overlay">
+                <div class="landing-copy">
+                    <div class="landing-eyebrow">🧭 Standardization Pathfinder</div>
+                    <h1>Find the clearest path forward.</h1>
+                    <p>
+                        Every recurring problem does not need an app. Follow the trail from
+                        friction to root cause, picture the better way, and discover the
+                        simplest standardization that actually fits.
+                    </p>
+                </div>
+            </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    _, center, _ = st.columns([2, 2, 2])
+    st.markdown(
+        """
+        <div class="journey-strip">
+            <div class="journey-stop">
+                <div class="num">1</div>
+                <b>Notice the friction</b>
+                <span>Capture what is slow, inconsistent, repetitive, unclear, or risky.</span>
+            </div>
+            <div class="journey-stop">
+                <div class="num">2</div>
+                <b>Follow it to the source</b>
+                <span>Understand the workflow, root cause, scale, and what happens if nothing changes.</span>
+            </div>
+            <div class="journey-stop">
+                <div class="num">3</div>
+                <b>Choose the right trail</b>
+                <span>Match the problem to a practical document, workbook, process, code, or app solution.</span>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    _, center, _ = st.columns([2.0, 2.0, 2.0])
     with center:
-        if st.button("Begin Assessment", use_container_width=True, type="primary"):
-            st.session_state.started = True
-            go_to(1)
+        if st.button("Begin the journey  →", type="primary", use_container_width=True):
+            goto(1)
 
-# PAGE 2: Problem Definition
+    st.caption("Prefer to talk it through? Longer questions include speech-to-text.")
+
 elif page == 1:
-    st.markdown('<div class="section-card"><h2>Problem Definition</h2>', unsafe_allow_html=True)
-
-    st.text_input(
-        "Problem Title",
-        key="problem_title",
-        placeholder="Example: Repeated manual preparation of project calculation workbooks",
+    heading(
+        "Part 1 · Define",
+        "What are you actually trying to fix?",
+        "Keep the description factual and neutral. Focus on the recurring problem and its consequence, not the solution you already have in mind.",
     )
 
-    st.text_area(
-        "Pain Point",
-        key="pain_point",
-        height=140,
-        placeholder="Describe the recurring problem, inefficiency, inconsistency, or source of frustration.",
+    with st.container(border=True):
+        st.text_input(
+            "Problem title",
+            key="problem_title",
+            placeholder="A short name you would recognize later",
+        )
+
+        voice_textarea(
+            "Pain point",
+            "pain_point",
+            placeholder="Describe the issue in two or three sentences.",
+            height=125,
+            help_text="What is difficult, slow, inconsistent, error-prone, or frustrating?",
+        )
+
+        voice_textarea(
+            "Why does it matter?",
+            "why_matter",
+            placeholder="Describe the result of the pain point in one sentence.",
+            height=100,
+            help_text="Think time, quality, error risk, rework, consistency, cost, or employee experience.",
+        )
+
+    complete = bool(
+        st.session_state.problem_title.strip()
+        and st.session_state.pain_point.strip()
+        and st.session_state.why_matter.strip()
     )
+    nav(next_disabled=not complete)
 
-    st.text_area(
-        "Why Does It Matter",
-        key="why_matter",
-        height=140,
-        placeholder="Describe the impact on time, quality, risk, consistency, cost, or employee experience.",
-    )
-
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    required_complete = all(
-        [
-            st.session_state.problem_title.strip(),
-            st.session_state.pain_point.strip(),
-            st.session_state.why_matter.strip(),
-        ]
-    )
-    if not required_complete:
-        st.caption("Complete all three fields to continue.")
-
-    navigation_buttons(next_disabled=not required_complete)
-
-# PAGE 3: Current State Assessment
 elif page == 2:
-    st.markdown('<div class="section-card"><h2>Current State Assessment</h2>', unsafe_allow_html=True)
-
-    st.text_area(
-        "Current Workflow",
-        key="current_workflow",
-        height=160,
-        placeholder="Describe how the work is currently completed from start to finish.",
+    heading(
+        "Part 2 · Current state",
+        "Walk through what happens today.",
+        "Include the real workarounds, manual checks, handoffs, and existing controls. Hidden manual work is often where the best standardization opportunities appear.",
     )
 
-    st.text_area(
-        "Existing Tools and Controls",
-        key="existing_tools",
-        height=130,
-        placeholder="List current templates, spreadsheets, scripts, SOPs, systems, reviews, QA/QC checks, or other controls.",
+    voice_textarea(
+        "Current workflow",
+        "current_workflow",
+        placeholder="Describe what happens from the start of the task to the end. Include manual checks and handoffs.",
+        height=180,
     )
 
+    voice_textarea(
+        "Existing tools and controls",
+        "existing_tools",
+        placeholder="What spreadsheets, templates, SOPs, systems, scripts, reviews, checklists, or informal workarounds already exist?",
+        height=145,
+    )
+
+    st.markdown("#### What is driving the problem?")
     st.multiselect(
-        "Root Cause Category",
-        options=ROOT_CAUSE_CATEGORIES,
-        key="root_cause_category",
-        help="Select all categories that materially contribute to the problem.",
+        "Root cause categories",
+        ROOT_CAUSE_CATEGORIES,
+        key="root_causes",
+        placeholder="Choose all that materially contribute",
+        label_visibility="collapsed",
     )
 
-    st.text_area(
-        "Root Cause Details",
-        key="root_cause_details",
-        height=140,
-        placeholder="Explain the underlying cause in more detail.",
+    voice_textarea(
+        "Why does this pain point exist?",
+        "root_cause_details",
+        placeholder="Explain the underlying cause. Try to distinguish the symptom from the cause.",
+        height=130,
     )
 
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    required_complete = all(
-        [
-            st.session_state.current_workflow.strip(),
-            len(st.session_state.root_cause_category) > 0,
-            st.session_state.root_cause_details.strip(),
-        ]
+    complete = bool(
+        st.session_state.current_workflow.strip()
+        and st.session_state.root_causes
+        and st.session_state.root_cause_details.strip()
     )
-    if not required_complete:
-        st.caption("Complete the Current Workflow, select at least one Root Cause Category, and add Root Cause Details.")
+    nav(next_disabled=not complete)
 
-    navigation_buttons(next_disabled=not required_complete)
-
-# PAGE 4: Standardization Needs
 elif page == 3:
-    st.markdown('<div class="section-card"><h2>Standardization Needs</h2>', unsafe_allow_html=True)
-
-    st.multiselect(
-        "What should standardization improve?",
-        options=STANDARDIZATION_OBJECTIVES,
-        key="objectives",
+    heading(
+        "Part 3 · Practicalities",
+        "How big is the problem in practice?",
+        "Scope, frequency, users, and time help distinguish a one-off annoyance from something worth standardizing heavily.",
     )
-
-    st.text_area(
-        "Desired Outcome",
-        key="desired_outcome",
-        height=130,
-        placeholder="Describe what a successful future state would look like.",
-    )
-
-    st.markdown("#### Work characteristics")
 
     c1, c2 = st.columns(2)
     with c1:
-        st.checkbox("Standard inputs are needed", key="standard_inputs_needed")
-        st.checkbox("The work includes repeatable calculations", key="calculation_heavy")
-        st.checkbox("The work primarily uses structured data", key="structured_data")
-
+        st.selectbox("Scope of the issue", SCOPE_OPTIONS, key="scope")
+        st.selectbox("How often does it occur?", FREQUENCY_OPTIONS, key="frequency")
     with c2:
-        st.checkbox("Standard outputs are needed", key="standard_outputs_needed")
-        st.checkbox("The work includes repeatable decisions or branching logic", key="repeatable_decisions")
-        st.checkbox("The work is primarily document- or guidance-heavy", key="document_heavy")
-
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    required_complete = len(st.session_state.objectives) > 0 and st.session_state.desired_outcome.strip()
-    if not required_complete:
-        st.caption("Select at least one objective and describe the desired outcome.")
-
-    navigation_buttons(next_disabled=not required_complete)
-
-# PAGE 5: Implementation Context
-elif page == 4:
-    st.markdown('<div class="section-card"><h2>Implementation Context</h2>', unsafe_allow_html=True)
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.selectbox("How often does the work occur?", FREQUENCY_OPTIONS, key="frequency")
-        st.selectbox("How many people typically perform or use the process?", USER_COUNT_OPTIONS, key="user_count")
-        st.selectbox("How variable is the process?", VARIABILITY_OPTIONS, key="variability")
-
-    with col2:
-        st.selectbox("How much data or information is handled?", DATA_VOLUME_OPTIONS, key="data_volume")
-        st.selectbox("How often do the requirements or process change?", CHANGE_OPTIONS, key="change_frequency")
-        st.selectbox("How dependent is the process on software systems?", SYSTEM_DEPENDENCY_OPTIONS, key="system_dependency")
-
-    st.markdown("#### Additional requirements")
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.checkbox("Strong auditability or traceability is important", key="needs_auditability")
-    with c2:
-        st.checkbox("The solution may need to work offline", key="needs_offline_use")
-    with c3:
-        st.checkbox("The primary users are nontechnical", key="needs_nontechnical_users")
-
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    navigation_buttons()
-
-# PAGE 6: Review
-elif page == 5:
-    st.markdown('<div class="section-card"><h2>Review Your Answers</h2>', unsafe_allow_html=True)
-
-    review_sections = [
-        (
-            "Problem Definition",
-            [
-                ("Problem Title", st.session_state.problem_title),
-                ("Pain Point", st.session_state.pain_point),
-                ("Why Does It Matter", st.session_state.why_matter),
-            ],
-        ),
-        (
-            "Current State",
-            [
-                ("Current Workflow", st.session_state.current_workflow),
-                ("Existing Tools and Controls", st.session_state.existing_tools or "Not provided"),
-                ("Root Cause Categories", ", ".join(st.session_state.root_cause_category)),
-                ("Root Cause Details", st.session_state.root_cause_details),
-            ],
-        ),
-        (
-            "Standardization Needs",
-            [
-                ("Objectives", ", ".join(st.session_state.objectives)),
-                ("Desired Outcome", st.session_state.desired_outcome),
-                ("Standard Inputs Needed", "Yes" if st.session_state.standard_inputs_needed else "No"),
-                ("Standard Outputs Needed", "Yes" if st.session_state.standard_outputs_needed else "No"),
-                ("Repeatable Decisions", "Yes" if st.session_state.repeatable_decisions else "No"),
-                ("Calculation Heavy", "Yes" if st.session_state.calculation_heavy else "No"),
-                ("Structured Data", "Yes" if st.session_state.structured_data else "No"),
-                ("Document / Guidance Heavy", "Yes" if st.session_state.document_heavy else "No"),
-            ],
-        ),
-        (
-            "Implementation Context",
-            [
-                ("Frequency", st.session_state.frequency),
-                ("Users", st.session_state.user_count),
-                ("Process Variability", st.session_state.variability),
-                ("Data Volume", st.session_state.data_volume),
-                ("Change Frequency", st.session_state.change_frequency),
-                ("System Dependency", st.session_state.system_dependency),
-                ("Auditability Important", "Yes" if st.session_state.needs_auditability else "No"),
-                ("Offline Use Needed", "Yes" if st.session_state.needs_offline_use else "No"),
-                ("Primary Users Nontechnical", "Yes" if st.session_state.needs_nontechnical_users else "No"),
-            ],
-        ),
-    ]
-
-    for heading, items in review_sections:
-        st.subheader(heading)
-        for label, value in items:
-            st.markdown(f'<div class="review-label">{label}</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="review-value">{value}</div>', unsafe_allow_html=True)
-
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    left, spacer, right = st.columns([1, 5, 1])
-    with left:
-        if st.button("Previous", use_container_width=True):
-            previous_page()
-    with right:
-        if st.button("Generate Recommendations", use_container_width=True, type="primary"):
-            st.session_state.recommendations_generated = True
-            go_to(6)
-
-# PAGE 7: Recommendations
-elif page == 6:
-    ranked, reasons = score_recommendations()
-
-    st.markdown('<div class="section-card"><h2>Recommended Standardization Approaches</h2>', unsafe_allow_html=True)
-    st.write(
-        "The results below are based on the root causes, work characteristics, scale, and implementation context you entered."
-    )
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    top_score = ranked[0][1]
-    recommended = [item for item in ranked if item[1] >= max(top_score - 2, 1)]
-
-    st.subheader("Primary recommendations")
-
-    for name, score in recommended[:3]:
-        rationale = reasons[name]
-        rationale_html = ""
-        if rationale:
-            rationale_html = "<ul>" + "".join(f"<li>{r}</li>" for r in rationale) + "</ul>"
-
-        st.markdown(
-            f"""
-            <div class="recommendation-card">
-                <h3>{name}</h3>
-                <p>{recommendation_description(name)}</p>
-                {rationale_html}
-            </div>
-            """,
-            unsafe_allow_html=True,
+        st.selectbox("How many people execute the current workflow?", USER_OPTIONS, key="user_count")
+        st.number_input(
+            "Approximate time spent each time the workflow occurs (hours)",
+            min_value=0.0,
+            max_value=1000.0,
+            step=0.5,
+            key="time_hours",
         )
 
-    st.subheader("How to interpret the result")
-    st.markdown(
-        """
-        The strongest solution is not always a single artifact. Many recurring operational
-        problems are best addressed with a small combination, such as:
-
-        - an SOP plus a checklist,
-        - a standard template plus an Excel calculation tool,
-        - a process redesign plus a shared knowledge resource, or
-        - an internal app supported by clear standard operating guidance.
-
-        Prefer the simplest solution that directly addresses the root cause. More automation
-        is useful only when the underlying process and decision logic are sufficiently stable
-        to automate.
-        """
+    voice_textarea(
+        "If nothing changes, what is the worst plausible outcome?",
+        "bau_outcome",
+        placeholder="Describe the business-as-usual risk in a few sentences.",
+        height=135,
+        help_text="Include operational impact, quality risk, rework, cost, missed errors, or external consequences where relevant.",
     )
 
-    st.subheader("Full fit comparison")
-    max_possible_display = max(score for _, score in ranked) if ranked else 1
-    for name, score in ranked:
-        normalized = int(max(0, score) / max(max_possible_display, 1) * 100)
-        st.write(f"**{name}**")
-        st.progress(normalized)
-        st.caption(recommendation_description(name))
+    nav(next_disabled=not st.session_state.bau_outcome.strip())
 
-    st.divider()
+elif page == 4:
+    heading(
+        "Part 4 · Daydream",
+        "Ignore constraints for a minute.",
+        "If you had unlimited time, resources, and technical capability, what would the best version of this process look like?",
+    )
 
-    left, middle, right = st.columns([1.4, 4.2, 1.8])
+    st.markdown(
+        """
+        <div class="prompt-card">
+            <b>This answer matters.</b> Describe the experience you actually want. If the ideal
+            future state is a clean Excel workbook with controlled inputs and comparison outputs,
+            Pathfinder treats that as evidence for an Excel solution rather than escalating to an app.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
+    voice_textarea(
+        "Your ideal future state",
+        "daydream",
+        placeholder="Describe what users would do, what the tool or process would do automatically, and what they would see at the end.",
+        height=210,
+    )
+
+    voice_textarea(
+        "What would success look like?",
+        "desired_outcome",
+        placeholder="Describe the practical outcome you want after standardization is implemented.",
+        height=120,
+    )
+
+    nav(next_disabled=not (st.session_state.daydream.strip() and st.session_state.desired_outcome.strip()))
+
+elif page == 5:
+    heading(
+        "Part 5 · Solution fit",
+        "What does the solution actually need to do?",
+        "These characteristics distinguish an SOP from a workbook, a workbook from code, and code from an app.",
+    )
+
+    c1, c2 = st.columns(2)
+    with c1:
+        st.selectbox("What kind of information dominates the work?", DATA_SHAPE_OPTIONS, key="data_shape")
+        st.selectbox("How variable is the logic or workflow?", VARIABILITY_OPTIONS, key="variability")
+    with c2:
+        st.checkbox("The work contains repeatable calculations", key="calculation_heavy")
+        st.checkbox("Users need to compare independently calculated results", key="comparison_needed")
+        st.checkbox("The process is already Excel / spreadsheet native", key="excel_native")
+        st.checkbox("The work includes repeated file or data processing", key="file_processing")
+
+    st.markdown("#### Standardization needs")
+    a, b, c = st.columns(3)
+    with a:
+        st.checkbox("Standard inputs", key="standard_inputs")
+        st.checkbox("Standard outputs", key="standard_outputs")
+    with b:
+        st.checkbox("Repeatable decision logic", key="repeatable_decisions")
+        st.checkbox("Strong QA/QC or traceability", key="qa_important")
+    with c:
+        st.checkbox("Shared centralized multi-user state", key="central_multiuser")
+        st.checkbox("Real-time cross-user updates", key="real_time")
+
+    st.markdown("#### Practical constraints")
+    d, e = st.columns(2)
+    with d:
+        st.checkbox("Should work offline", key="offline")
+    with e:
+        st.checkbox("Primary users are nontechnical", key="nontechnical")
+
+    nav()
+
+elif page == 6:
+    heading(
+        "Review",
+        "Does this describe the problem accurately?",
+        "Review the full story before Pathfinder recommends a solution. Go back if anything important is missing.",
+    )
+
+    sections = [
+        ("Problem", [
+            ("Title", st.session_state.problem_title),
+            ("Pain point", st.session_state.pain_point),
+            ("Why it matters", st.session_state.why_matter),
+        ]),
+        ("Current state", [
+            ("Workflow", st.session_state.current_workflow),
+            ("Existing tools and controls", st.session_state.existing_tools or "Not provided"),
+            ("Root causes", ", ".join(st.session_state.root_causes)),
+            ("Root cause details", st.session_state.root_cause_details),
+        ]),
+        ("Practicalities", [
+            ("Scope", st.session_state.scope),
+            ("Frequency", st.session_state.frequency),
+            ("People", st.session_state.user_count),
+            ("Time per occurrence", f"{st.session_state.time_hours:g} hours"),
+            ("Business-as-usual risk", st.session_state.bau_outcome),
+        ]),
+        ("Future state", [
+            ("Daydream", st.session_state.daydream),
+            ("Desired outcome", st.session_state.desired_outcome),
+        ]),
+    ]
+
+    with st.container(border=True):
+        for title, items in sections:
+            st.subheader(title)
+            for k, v in items:
+                st.markdown(f'<div class="review-k">{k}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="review-v">{v}</div>', unsafe_allow_html=True)
+
+    nav(next_label="Find my solution")
+
+elif page == 7:
+    ranked, why = recommendation_engine()
+    top_name, top_score = ranked[0]
+
+    st.markdown(
+        f"""
+        <div class="result-hero">
+            <div class="label">Best-fit standardization</div>
+            <h2>{top_name}</h2>
+            <p>{solution_description(top_name)}</p>
+            <div class="badge-row">
+                <span class="badge">{category_for(top_name)}</span>
+                <span class="badge">Fit score {top_score}</span>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    if why[top_name]:
+        st.markdown("### Why this fits")
+        for reason in why[top_name][:5]:
+            st.markdown(f"- {reason}")
+
+    st.markdown("### Strong alternatives")
+    cols = st.columns(3)
+    alternatives = ranked[1:4]
+    highest = max(max(v for _, v in ranked), 1)
+
+    for col, (name, score) in zip(cols, alternatives):
+        with col:
+            pct = max(0, min(100, round(score / highest * 100)))
+            st.markdown(
+                f"""
+                <div class="fit-card">
+                    <div class="review-k">{category_for(name)}</div>
+                    <h4>{name}</h4>
+                    <div class="score">{pct}%</div>
+                    <div class="why">{solution_description(name)}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+    st.write("")
+    with st.expander("See the full comparison"):
+        for name, score in ranked:
+            pct = max(0, min(100, round(score / highest * 100)))
+            st.markdown(f"**{name}** · {category_for(name)}")
+            st.progress(pct)
+            if why[name]:
+                st.caption(why[name][0])
+            else:
+                st.caption(solution_description(name))
+
+    if top_name == "Excel calculation workbook":
+        st.markdown("## Build your workbook")
+        st.write(
+            "Pathfinder identified a calculation workbook as the best fit. "
+            "Use this sequence to move from the idea to a functional, reviewable workbook."
+        )
+
+        for i, (title, detail) in enumerate(EXCEL_BUILD_FRAMEWORK, start=1):
+            st.markdown(
+                f"""
+                <div class="framework-step">
+                    <span class="n">{i}</span><b>{title}</b><br>
+                    <span class="why">{detail}</span>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        st.info(
+            "A useful default workbook structure is: Instructions · Inputs · Parameters · "
+            "Calculations · QA/QC · Results · Change Log. Not every workbook needs every sheet."
+        )
+
+    st.markdown("### What the result means")
+    st.write(
+        "This is a fit recommendation, not a mandate. The scoring intentionally favors the "
+        "simplest solution that addresses the root cause. An app only receives a major advantage "
+        "when the problem genuinely requires centralized multi-user interaction, real-time shared "
+        "state, or an app-style guided experience."
+    )
+
+    left, middle, right = st.columns([1.1, 4.8, 1.6])
     with left:
-        if st.button("Previous", use_container_width=True):
-            previous_page()
-
+        if st.button("Back", use_container_width=True):
+            goto(6)
     with right:
-        if st.button("Start New Assessment", use_container_width=True):
-            for key, value in DEFAULTS.items():
-                st.session_state[key] = value
-            st.rerun()
+        if st.button("Start over", use_container_width=True):
+            reset_app()
