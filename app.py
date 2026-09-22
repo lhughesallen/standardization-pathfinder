@@ -959,60 +959,47 @@ step_strip()
 page = st.session_state.page
 
 if page == 0:
-    st.markdown(
-        """
-        <div class="landing-shell">
-            <div class="landing-sky"></div>
-            <div class="mist"></div>
-            <div class="mountains-back"></div>
-            <div class="mountains-front"></div>
-            <div class="forest-floor"></div>
-            <div class="path"></div>
-            <div class="tree t1"></div>
-            <div class="tree t2"></div>
-            <div class="tree t3"></div>
-            <div class="tree t4"></div>
-            <div class="tree t5"></div>
-            <div class="tree t6"></div>
+    landing_html = """<div class="landing-shell">
+<div class="landing-sky"></div>
+<div class="mist"></div>
+<div class="mountains-back"></div>
+<div class="mountains-front"></div>
+<div class="forest-floor"></div>
+<div class="path"></div>
+<div class="tree t1"></div>
+<div class="tree t2"></div>
+<div class="tree t3"></div>
+<div class="tree t4"></div>
+<div class="tree t5"></div>
+<div class="tree t6"></div>
+<div class="landing-overlay">
+<div class="landing-copy">
+<div class="landing-eyebrow">🧭 Standardization Pathfinder</div>
+<h1>Find the clearest path forward.</h1>
+<p>Every recurring problem does not need an app. Follow the trail from friction to root cause, picture the better way, and discover the simplest standardization that actually fits.</p>
+</div>
+</div>
+</div>"""
+    st.markdown(landing_html, unsafe_allow_html=True)
 
-            <div class="landing-overlay">
-                <div class="landing-copy">
-                    <div class="landing-eyebrow">🧭 Standardization Pathfinder</div>
-                    <h1>Find the clearest path forward.</h1>
-                    <p>
-                        Every recurring problem does not need an app. Follow the trail from
-                        friction to root cause, picture the better way, and discover the
-                        simplest standardization that actually fits.
-                    </p>
-                </div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    st.markdown(
-        """
-        <div class="journey-strip">
-            <div class="journey-stop">
-                <div class="num">1</div>
-                <b>Notice the friction</b>
-                <span>Capture what is slow, inconsistent, repetitive, unclear, or risky.</span>
-            </div>
-            <div class="journey-stop">
-                <div class="num">2</div>
-                <b>Follow it to the source</b>
-                <span>Understand the workflow, root cause, scale, and what happens if nothing changes.</span>
-            </div>
-            <div class="journey-stop">
-                <div class="num">3</div>
-                <b>Choose the best path</b>
-                <span>Match the problem to a practical document, workbook, process, code, or app solution.</span>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    journey_html = """<div class="journey-strip">
+<div class="journey-stop">
+<div class="num">1</div>
+<b>Notice the friction</b>
+<span>Capture what is slow, inconsistent, repetitive, unclear, or risky.</span>
+</div>
+<div class="journey-stop">
+<div class="num">2</div>
+<b>Follow it to the source</b>
+<span>Understand the workflow, root cause, scale, and what happens if nothing changes.</span>
+</div>
+<div class="journey-stop">
+<div class="num">3</div>
+<b>Choose the best path forward</b>
+<span>Match the problem to a practical document, workbook, process, code, or app solution.</span>
+</div>
+</div>"""
+    st.markdown(journey_html, unsafe_allow_html=True)
 
     _, center, _ = st.columns([2.0, 2.0, 2.0])
     with center:
